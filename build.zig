@@ -34,4 +34,5 @@ pub fn build(b: *std.Build) void {
     addBinary(b, "02_direct_simd_search", target, optimize);
     addBinary(b, "03_optimize_reading", target, optimize);
     addBinary(b, "04_arena_allocator", target, optimize);
+    addBinary(b, "05_parallel", target, optimize);
 }
