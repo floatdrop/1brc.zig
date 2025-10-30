@@ -1,8 +1,13 @@
 const std = @import("std");
 
 pub fn main() !void {
-    const cwd = std.fs.cwd();
+    var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
+    defer std.debug.assert(general_purpose_allocator.deinit() == .ok);
+    const allocator = general_purpose_allocator.allocator();
 
+    // Reading file into memory with mmap
+
+    const cwd = std.fs.cwd();
     var file = try cwd.openFile("measurements.txt", .{ .mode = .read_only });
     defer file.close();
 
@@ -23,54 +28,50 @@ pub fn main() !void {
     );
     defer std.posix.munmap(mapped_memory);
 
-    var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
-    defer std.debug.assert(general_purpose_allocator.deinit() == .ok);
-    const allocator = general_purpose_allocator.allocator();
+    // Setup ThreadPool
 
     const cpu_count: usize = try std.Thread.getCpuCount();
-
     var pool: std.Thread.Pool = undefined;
     try pool.init(std.Thread.Pool.Options{ .allocator = allocator, .n_jobs = cpu_count });
     defer pool.deinit();
 
+    // Preallocate StatsMap for each thread
+
     const chunk_size = mapped_memory.len / cpu_count;
-    const maps = try allocator.alloc(std.StringHashMap(Stats), cpu_count + 1);
+    const thread_maps = try allocator.alloc(StatsMap, cpu_count + 1);
     defer {
-        for (maps) |*map| {
-            var key_iter = map.keyIterator();
-            while (key_iter.next()) |key| {
-                allocator.free(key.*);
-            }
-            map.deinit();
+        for (thread_maps) |*map| {
+            deinitHashMapKeys(allocator, map);
+            defer map.deinit();
         }
-        allocator.free(maps);
+        allocator.free(thread_maps);
     }
 
-    {
-        var i: usize = 0;
-        var wg = std.Thread.WaitGroup{};
-        var iter = std.mem.window(u8, mapped_memory, chunk_size, chunk_size);
-        while (iter.next()) |buf| : (i += 1) {
-            maps[i] = std.StringHashMap(Stats).init(allocator);
-            pool.spawnWg(&wg, parseLines, .{ allocator, buf, &maps[i] });
-        }
-        wg.wait();
-    }
+    // Spawning workers to split the churn of hashing cities
 
-    var map = std.StringHashMap(Stats).init(allocator);
+    var thread: usize = 0;
+    var wg = std.Thread.WaitGroup{};
+    var buf_iter = std.mem.window(u8, mapped_memory, chunk_size, chunk_size);
+    while (buf_iter.next()) |buf| : (thread += 1) {
+        pool.spawnWg(&wg, parseLines, .{ allocator, buf, &thread_maps[thread] });
+    }
+    wg.wait();
+
+    // Create resulting map
+
+    var result = StatsMap.init(allocator);
     defer {
-        var key_iter = map.keyIterator();
-        while (key_iter.next()) |key| {
-            allocator.free(key.*);
-        }
-        map.deinit();
+        deinitHashMapKeys(allocator, &result);
+        result.deinit();
     }
 
-    for (maps) |m| {
+    // Accumulate all results from threads to result
+
+    for (thread_maps) |m| {
         var iter = m.iterator();
         while (iter.next()) |i| {
             const name = i.key_ptr.*;
-            const entry = map.getOrPut(name) catch unreachable;
+            const entry = result.getOrPut(name) catch unreachable;
             if (!entry.found_existing) {
                 entry.key_ptr.* = allocator.dupe(u8, name) catch unreachable;
                 entry.value_ptr.* = Stats{};
@@ -80,23 +81,34 @@ pub fn main() !void {
         }
     }
 
-    std.debug.print("{{", .{});
+    // And output in kinda ok way
+
+    var stdout_buf: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buf);
+    var stdout = &stdout_writer.interface;
+
+    _ = try stdout.write("{{");
     var print_comma = false;
-    var iter = map.iterator();
+    var iter = result.iterator();
     while (iter.next()) |item| {
         if (print_comma) {
-            std.debug.print(", ", .{});
+            _ = try stdout.write(", ");
         } else {
             print_comma = true;
         }
-        std.debug.print("{s}={d}/{d}/{d}", .{ item.key_ptr.*, item.value_ptr.min, @divTrunc(item.value_ptr.avg, item.value_ptr.n), item.value_ptr.max });
+        try stdout.print("{s}={d}/{d}/{d}", .{ item.key_ptr.*, item.value_ptr.min, @divTrunc(item.value_ptr.avg, item.value_ptr.n), item.value_ptr.max });
     }
-    std.debug.print("}}\n", .{});
+    _ = try stdout.write("}}\n");
+    try stdout.flush();
 }
 
-pub fn parseLines(allocator: std.mem.Allocator, buffer: []const u8, map: *std.StringHashMap(Stats)) void {
+pub fn parseLines(allocator: std.mem.Allocator, buffer: []const u8, map: *StatsMap) void {
+    map.* = StatsMap.init(allocator);
+
+    // TODO: This will skip lines that was maybe splitted in half by std.mem.window
     var start_index: usize = std.mem.indexOfScalar(u8, buffer, '\n') orelse 0;
 
+    // std.mem.indexOfScalar will try to use SIMD for seaching
     while (std.mem.indexOfScalarPos(u8, buffer, start_index, '\n')) |eol| : (start_index = eol + 1) {
         const line = buffer[start_index..eol];
         const semicolon = std.mem.indexOfScalar(u8, line, ';') orelse continue;
@@ -112,6 +124,10 @@ pub fn parseLines(allocator: std.mem.Allocator, buffer: []const u8, map: *std.St
         entry.value_ptr.add(temp);
     }
 }
+
+// TODO: const StatsMap = std.HashMap([]const u8, Stats, FastStringContext, std.hash_map.default_max_load_percentage)
+//       where FastStringContext have more robust hash function for this challange (see https://github.com/ziglang/zig/issues/15916)
+const StatsMap = std.StringHashMap(Stats);
 
 const Stats = struct {
     min: i16 = 999,
@@ -135,6 +151,7 @@ const Stats = struct {
 };
 
 pub fn parseNumber(s: []const u8) i16 {
+    // std.fmt.parseInt is quite good
     const decim: i16 = std.fmt.parseInt(i16, s[0 .. s.len - 2], 10) catch unreachable;
     const frac: u8 = s[s.len - 1] - '0';
     if (s[0] == '-') {
@@ -150,4 +167,11 @@ test "parse temperature" {
     try std.testing.expectEqual(1, parseNumber("0.1"));
     try std.testing.expectEqual(-1, parseNumber("-0.1"));
     try std.testing.expectEqual(-12, parseNumber("-1.2"));
+}
+
+pub fn deinitHashMapKeys(allocator: std.mem.Allocator, map: *StatsMap) void {
+    var key_iter = map.keyIterator();
+    while (key_iter.next()) |key| {
+        allocator.free(key.*);
+    }
 }
