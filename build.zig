@@ -19,15 +19,15 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // const create_measurements = b.addExecutable(.{
-    //     .name = "create_measurements",
-    //     .root_module = b.createModule(.{
-    //         .root_source_file = b.path("src/create_measurements.zig"),
-    //         .target = target,
-    //         .optimize = optimize,
-    //     }),
-    // });
-    // b.installArtifact(create_measurements);
+    const create_measurements = b.addExecutable(.{
+        .name = "create_measurements",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/create_measurements.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    b.installArtifact(create_measurements);
 
     addBinary(b, "00_baseline", target, optimize);
     addBinary(b, "01_redo_floats", target, optimize);
