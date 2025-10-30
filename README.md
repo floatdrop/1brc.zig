@@ -11,6 +11,19 @@ Benchmark 1: ./zig-out/bin/05_parallel
 
 At the moment Wyhash is taking a lot of time to compute.
 
+## Build and run
+
+You will need Zig 0.15.2.
+
+```
+$ zig build --release=fast
+
+$ ./zig-out/bin/create_measurements
+
+$ ./zig-out/bin/05_parallel
+```
+
+
 ## Resources
 
 - [Solving Java’s 1 Billion Row Challenge (Ep. 1) | With @caseymuratori](https://www.youtube.com/watch?v=n-YK3B4_xPA) - Very good series about this challenge 
