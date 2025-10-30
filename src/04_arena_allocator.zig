@@ -43,19 +43,11 @@ pub fn main() !void {
 
     var reader = std.Io.Reader.fixed(mapped_memory);
 
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer std.debug.assert(gpa.deinit() == .ok);
-    const allocator = gpa.allocator();
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
     var map = std.StringHashMap(Stats).init(allocator);
-
-    defer {
-        var key_iter = map.keyIterator();
-        while (key_iter.next()) |key| {
-            allocator.free(key.*);
-        }
-        map.deinit();
-    }
 
     while (try reader.takeDelimiter('\n')) |line| {
         const semicolon = std.mem.indexOfScalar(u8, line, ';') orelse unreachable;

@@ -43,9 +43,9 @@ pub fn main() !void {
 
     var reader = std.Io.Reader.fixed(mapped_memory);
 
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const allocator = gpa.allocator();
 
     var map = std.StringHashMap(Stats).init(allocator);
 
