@@ -1,11 +1,21 @@
 const std = @import("std");
 
 const Stats = struct {
-    min: f64 = 99,
-    max: f64 = -99,
-    avg: f64 = 0,
-    n: usize = 0,
+    min: i16 = 999,
+    max: i16 = -999,
+    avg: i64 = 0,
+    n: i64 = 0,
 };
+
+pub fn parseNumber(s: []const u8) i16 {
+    const decim: i16 = std.fmt.parseInt(i16, s[0 .. s.len - 2], 10) catch unreachable;
+    const frac: u8 = s[s.len - 1] - '0';
+    if (s[0] == '-') {
+        return decim * 10 - frac;
+    } else {
+        return decim * 10 + frac;
+    }
+}
 
 pub fn main() !void {
     const cwd = std.fs.cwd();
@@ -30,24 +40,23 @@ pub fn main() !void {
         map.deinit();
     }
 
-    const parent_progress_node = std.Progress.start(.{ .root_name = "Computing statistics..." });
     while (try reader.interface.takeDelimiter('\n')) |line| {
         const semicolon = std.mem.indexOf(u8, line, ";") orelse unreachable;
         const name = line[0..semicolon];
-        const temp = try std.fmt.parseFloat(f64, line[semicolon + 1 ..]);
+        const temp = parseNumber(line[semicolon + 1 ..]);
 
         const entry = try map.getOrPut(name);
 
         if (!entry.found_existing) {
             entry.key_ptr.* = try allocator.dupe(u8, name);
+            entry.value_ptr.* = Stats{};
         }
 
         var stats = entry.value_ptr;
         stats.min = @min(stats.min, temp);
         stats.max = @max(stats.max, temp);
         stats.n += 1;
-        stats.avg = stats.avg + (temp - stats.avg) / @as(f64, @floatFromInt(stats.n));
-        parent_progress_node.completeOne();
+        stats.avg += temp;
     }
 
     std.debug.print("{{", .{});
@@ -59,7 +68,15 @@ pub fn main() !void {
         } else {
             print_comma = true;
         }
-        std.debug.print("{s}={d:.1}/{d:.1}/{d:.1}", .{ item.key_ptr.*, item.value_ptr.min, item.value_ptr.avg, item.value_ptr.max });
+        std.debug.print("{s}={d}/{d}/{d}", .{ item.key_ptr.*, item.value_ptr.min, @divTrunc(item.value_ptr.avg, item.value_ptr.n), item.value_ptr.max });
     }
     std.debug.print("}}\n", .{});
+}
+
+test "parse temperature" {
+    try std.testing.expectEqual(-1001, parseNumber("-100.1"));
+    try std.testing.expectEqual(101, parseNumber("10.1"));
+    try std.testing.expectEqual(1, parseNumber("0.1"));
+    try std.testing.expectEqual(-1, parseNumber("-0.1"));
+    try std.testing.expectEqual(-12, parseNumber("-1.2"));
 }
