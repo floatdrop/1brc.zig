@@ -1,4 +1,4 @@
-# 1brc in Zig
+# [1brc](https://github.com/gunnarmorling/1brc) in Zig
 
 One billion rows challange in std Zig.
 
