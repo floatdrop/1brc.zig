@@ -11,6 +11,14 @@ Benchmark 1: ./zig-out/bin/05_parallel
 
 At the moment Wyhash is taking a lot of time to compute.
 
+Our target is to beat at least this benchmark from Java 1brc solution compiled with GraalVM:
+
+```
+Benchmark 1: ./calculate_average_thomaswue.sh
+  Time (mean ± σ):     587.7 ms ±   3.3 ms    [User: 3.6 ms, System: 4.5 ms]
+  Range (min … max):   583.2 ms … 593.2 ms    10 runs
+```
+
 ## Build and run
 
 You will need Zig 0.15.2.
