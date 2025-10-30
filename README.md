@@ -9,8 +9,6 @@ Benchmark 1: ./zig-out/bin/05_parallel
 ```
 
 
-At the moment Wyhash is taking a lot of time to compute.
-
 Our target is to beat at least [Top 1 submission](https://github.com/gunnarmorling/1brc/blob/main/src/main/java/dev/morling/onebrc/CalculateAverage_thomaswue.java) from Java 1brc solution compiled with GraalVM:
 
 ```
@@ -18,6 +16,13 @@ Benchmark 1: ./calculate_average_thomaswue.sh
   Time (mean ± σ):     587.7 ms ±   3.3 ms    [User: 3.6 ms, System: 4.5 ms]
   Range (min … max):   583.2 ms … 593.2 ms    10 runs
 ```
+
+## TODO
+
+- Implement work stealing with 2MB chunks
+- Figure out faster hash function
+- Reduce branches where possible
+- Profile cachemisses
 
 ## Build and run
 
