@@ -1,56 +1,37 @@
 const std = @import("std");
 
+pub fn addBinary(b: *std.Build, name: []const u8, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
+    var buffer: [100]u8 = undefined;
+    const path = std.fmt.bufPrint(&buffer, "src/{s}.zig", .{name}) catch unreachable;
+
+    const exe = b.addExecutable(.{
+        .name = name,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(path),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    b.installArtifact(exe);
+}
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const create_measurements = b.addExecutable(.{
-        .name = "create_measurements",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/create_measurements.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    b.installArtifact(create_measurements);
+    // const create_measurements = b.addExecutable(.{
+    //     .name = "create_measurements",
+    //     .root_module = b.createModule(.{
+    //         .root_source_file = b.path("src/create_measurements.zig"),
+    //         .target = target,
+    //         .optimize = optimize,
+    //     }),
+    // });
+    // b.installArtifact(create_measurements);
 
-    const _00_baseline = b.addExecutable(.{
-        .name = "00_baseline",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/00_baseline.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    b.installArtifact(_00_baseline);
-
-    const _01_redo_floats = b.addExecutable(.{
-        .name = "01_redo_floats",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/01_redo_floats.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    b.installArtifact(_01_redo_floats);
-
-    const _02_direct_simd_search = b.addExecutable(.{
-        .name = "02_direct_simd_search",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/02_direct_simd_search.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    b.installArtifact(_02_direct_simd_search);
-
-    const _03_optimize_reading = b.addExecutable(.{
-        .name = "03_optimize_reading",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/03_optimize_reading.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    b.installArtifact(_03_optimize_reading);
+    addBinary(b, "00_baseline", target, optimize);
+    addBinary(b, "01_redo_floats", target, optimize);
+    addBinary(b, "02_direct_simd_search", target, optimize);
+    addBinary(b, "03_optimize_reading", target, optimize);
+    addBinary(b, "04_arena_allocator", target, optimize);
 }
