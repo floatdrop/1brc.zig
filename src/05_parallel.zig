@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub fn main() !void {
     var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
@@ -14,15 +15,21 @@ pub fn main() !void {
     const file_stats = try file.stat();
     const file_size: usize = @intCast(file_stats.size);
 
+    const flags: std.posix.system.MAP = switch (builtin.os.tag) {
+        .linux => .{
+            .TYPE = .PRIVATE,
+            .POPULATE = true,
+            .HUGETLB = true,
+        },
+        .macos => .{ .TYPE = .PRIVATE },
+        else => @compileError("Sorry, your system is not supported"),
+    };
+
     const mapped_memory = try std.posix.mmap(
         null,
         file_size,
         std.posix.PROT.READ,
-        .{
-            .TYPE = .PRIVATE,
-            // On linux this could be benefitial
-            // .POPULATE = true,
-        },
+        flags,
         file.handle,
         0,
     );
