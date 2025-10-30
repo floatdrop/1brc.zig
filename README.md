@@ -11,7 +11,7 @@ Benchmark 1: ./zig-out/bin/05_parallel
 
 At the moment Wyhash is taking a lot of time to compute.
 
-Our target is to beat at least this benchmark from Java 1brc solution compiled with GraalVM:
+Our target is to beat at least [Top 1 submission](https://github.com/gunnarmorling/1brc/blob/main/src/main/java/dev/morling/onebrc/CalculateAverage_thomaswue.java) from Java 1brc solution compiled with GraalVM:
 
 ```
 Benchmark 1: ./calculate_average_thomaswue.sh
