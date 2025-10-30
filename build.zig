@@ -33,4 +33,14 @@ pub fn build(b: *std.Build) void {
         }),
     });
     b.installArtifact(_01_redo_floats);
+
+    const _02_direct_simd_search = b.addExecutable(.{
+        .name = "02_direct_simd_search",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/02_direct_simd_search.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    b.installArtifact(_02_direct_simd_search);
 }
