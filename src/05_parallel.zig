@@ -111,6 +111,7 @@ pub fn main() !void {
 
 pub fn parseLines(allocator: std.mem.Allocator, buffer: []const u8, map: *StatsMap) void {
     map.* = StatsMap.init(allocator);
+    map.ensureTotalCapacity(16384) catch unreachable;
 
     // TODO: This will skip lines that was maybe splitted in half by std.mem.window
     var start_index: usize = std.mem.indexOfScalar(u8, buffer, '\n') orelse 0;

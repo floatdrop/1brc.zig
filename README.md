@@ -4,8 +4,8 @@ One billion rows challange in std Zig.
 
 ```
 Benchmark 1: ./zig-out/bin/05_parallel
-  Time (mean ± σ):      2.101 s ±  0.019 s    [User: 24.591 s, System: 1.227 s]
-  Range (min … max):    2.068 s …  2.130 s    10 runs
+  Time (mean ± σ):      1.965 s ±  0.129 s    [User: 21.344 s, System: 1.354 s]
+  Range (min … max):    1.867 s …  2.199 s    10 runs
 ```
 
 
