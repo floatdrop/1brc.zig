@@ -43,4 +43,14 @@ pub fn build(b: *std.Build) void {
         }),
     });
     b.installArtifact(_02_direct_simd_search);
+
+    const _03_optimize_reading = b.addExecutable(.{
+        .name = "03_optimize_reading",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/03_optimize_reading.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    b.installArtifact(_03_optimize_reading);
 }
